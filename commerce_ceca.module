@@ -3,8 +3,6 @@
 /**
  * @file
  * Implements CECA Standard in Drupal Commerce checkout.
- * 
- * @author Francisco J. Cruz Romanos <grisendo@gmail.com>
  */
 
 /**
@@ -110,7 +108,6 @@ function commerce_ceca_submit_form($payment_method, $pane_values, $checkout_pane
   $form = array();
 
   // TO-DO: Credit card option.
-
   return $form;
 
 }
