@@ -1,6 +1,13 @@
 <?php
 
 /**
+ * @file
+ * Implements CECA Standard in Drupal Commerce checkout.
+ * 
+ * @author Francisco J. Cruz Romanos <grisendo@gmail.com>
+ */
+
+/**
  * Implements hook_commerce_payment_method_info().
  */
 function commerce_ceca_commerce_payment_method_info() {
@@ -33,6 +40,7 @@ function commerce_ceca_default_settings() {
     'key' => '',
     'url_ok' => '<front>',
     'url_no_ok' => '<front>',
+    // TO-DO: Credit card option.
   );
 
 }
@@ -78,12 +86,15 @@ function commerce_ceca_settings_form($settings = array()) {
     '#type' => 'textfield',
     '#title' => t('OK URL'),
     '#default_value' => $settings['url_ok'],
+    // TO-DO: Tokens.
   );
   $form['url_no_ok'] = array(
     '#type' => 'textfield',
     '#title' => t('Not OK URL'),
     '#default_value' => $settings['url_no_ok'],
+    // TO-DO: Tokens.
   );
+  // TO-DO: Credit card option.
   return $form;
 
 }
@@ -97,6 +108,8 @@ function commerce_ceca_submit_form($payment_method, $pane_values, $checkout_pane
   $payment_method['settings'] += commerce_ceca_default_settings();
 
   $form = array();
+
+  // TO-DO: Credit card option.
 
   return $form;
 
@@ -189,7 +202,7 @@ function commerce_ceca_redirect_form($form, &$form_state, $order, $payment_metho
     );
   }
 
-  // TO-DO: SI TARJETA
+  // TO-DO: Credit card option.
   if (FALSE) {
     $data_card = array(
       'Pago_elegido' => 'SSL',
