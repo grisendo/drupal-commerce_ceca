@@ -147,6 +147,7 @@ function commerce_ceca_redirect_form($form, &$form_state, $order, $payment_metho
     'pt-br' => 9,
     'it' => 10,
   );
+
   if (isset($langs[$language->language])) {
     $lang_op = $langs[$language->language];
   }
@@ -154,7 +155,9 @@ function commerce_ceca_redirect_form($form, &$form_state, $order, $payment_metho
     $lang_op = 6;
   }
 
-  $currency = $order->commerce_order_total[LANGUAGE_NONE][0]['currency_code'];
+  $wrapper_order = entity_metadata_wrapper('commerce_order', $order);
+
+  $currency = $wrapper_order->commerce_order_total->currency_code->value();
 
   module_load_include('inc', 'commerce', 'includes/commerce.currency');
   $currency_options = commerce_commerce_currency_info();
@@ -166,7 +169,7 @@ function commerce_ceca_redirect_form($form, &$form_state, $order, $payment_metho
     $currency = 840;
   }
 
-  $total = $order->commerce_order_total[LANGUAGE_NONE][0]['amount'];
+  $total = $wrapper_order->commerce_order_total->amount->value();
 
   $signature = sha1(
     $payment_method['settings']['key'] . $payment_method['settings']['merchant_id'] .
