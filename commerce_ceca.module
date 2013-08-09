@@ -1,0 +1,215 @@
+<?php
+
+/**
+ * Implements hook_commerce_payment_method_info().
+ */
+function commerce_ceca_commerce_payment_method_info() {
+
+  $payment_methods = array();
+
+  $payment_methods['commerce_ceca'] = array(
+    'base' => 'commerce_ceca',
+    'title' => t('CECA'),
+    'description' => t('CECA Payment'),
+    'terminal' => FALSE,
+    'offsite' => TRUE,
+    'offsite_autoredirect' => TRUE,
+  );
+
+  return $payment_methods;
+
+}
+
+/**
+ * Returns the default settings for the CECA payment method.
+ */
+function commerce_ceca_default_settings() {
+
+  return array(
+    'server' => 'devel',
+    'merchant_id' => '',
+    'acquirer_bin' => '',
+    'terminal_id' => '',
+    'key' => '',
+    'url_ok' => '<front>',
+    'url_no_ok' => '<front>',
+  );
+
+}
+
+/**
+ * Payment method callback: settings form.
+ */
+function commerce_ceca_settings_form($settings = array()) {
+
+  $settings = (array) $settings + commerce_ceca_default_settings();
+
+  $form = array();
+  $form['server'] = array(
+    '#type' => 'radios',
+    '#title' => t('PayPal server'),
+    '#options' => array(
+      'devel' => t('Development - use for testing'),
+      'live' => t('Live - use for processing real transactions'),
+    ),
+    '#default_value' => $settings['server'],
+  );
+  $form['merchant_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Merchant ID'),
+    '#default_value' => $settings['merchant_id'],
+  );
+  $form['acquirer_bin'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Acquirer BIN'),
+    '#default_value' => $settings['acquirer_bin'],
+  );
+  $form['terminal_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Terminal ID'),
+    '#default_value' => $settings['terminal_id'],
+  );
+  $form['key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Key'),
+    '#default_value' => $settings['key'],
+  );
+  $form['url_ok'] = array(
+    '#type' => 'textfield',
+    '#title' => t('OK URL'),
+    '#default_value' => $settings['url_ok'],
+  );
+  $form['url_no_ok'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Not OK URL'),
+    '#default_value' => $settings['url_no_ok'],
+  );
+  return $form;
+
+}
+
+/**
+ * Payment method callback: checkout form.
+ */
+function commerce_ceca_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+
+  module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
+  $payment_method['settings'] += commerce_ceca_default_settings();
+
+  $form = array();
+
+  return $form;
+
+}
+
+/**
+ * Payment method callback: redirect form.
+ */
+function commerce_ceca_redirect_form($form, &$form_state, $order, $payment_method) {
+
+  $payment_method['settings'] += commerce_ceca_default_settings();
+  if ($payment_method['settings']['server'] == 'live') {
+    $form['#action'] = 'https://pgw.ceca.es/cgi-bin/tpv';
+  }
+  else {
+    $form['#action'] = 'http://tpv.ceca.es:8000/cgi-bin/tpv';
+  }
+  $form['#method'] = 'POST';
+  $form['#attributes'] = array(
+    'enctype' => 'application/x-www-form-urlencoded',
+  );
+
+  global $language;
+
+  $langs = array(
+    'es' => 1,
+    'ca' => 2,
+    'eu' => 3,
+    'gl' => 4,
+    'va' => 5,
+    'en' => 6,
+    'en-gb' => 6,
+    'fr' => 7,
+    'de' => 8,
+    'gsw-berne' => 8,
+    'pt' => 9,
+    'pt-pt' => 9,
+    'pt-br' => 9,
+    'it' => 10,
+  );
+  if (isset($langs[$language->language])) {
+    $lang_op = $langs[$language->language];
+  }
+  else {
+    $lang_op = 6;
+  }
+
+  $currency = $order->commerce_order_total[LANGUAGE_NONE][0]['currency_code'];
+
+  module_load_include('inc', 'commerce', 'includes/commerce.currency');
+  $currency_options = commerce_commerce_currency_info();
+
+  if (isset($currency_options[$currency]['numeric_code'])) {
+    $currency = $currency_options[$currency]['numeric_code'];
+  }
+  else {
+    $currency = 840;
+  }
+
+  $total = $order->commerce_order_total[LANGUAGE_NONE][0]['amount'];
+
+  $signature = sha1(
+    $payment_method['settings']['key'] . $payment_method['settings']['merchant_id'] .
+    $payment_method['settings']['acquirer_bin'] . $payment_method['settings']['terminal_id'] .
+    $order->order_number . $total .
+    $currency . 2 . 'SHA1' .
+    $payment_method['settings']['url_ok'] . $payment_method['settings']['url_not_ok']
+  );
+
+  $data = array(
+    'MerchantID' => $payment_method['settings']['merchant_id'],
+    'AcquirerBIN' => $payment_method['settings']['acquirer_bin'],
+    'TerminalID' => $payment_method['settings']['terminal_id'],
+    'URL_OK' => $payment_method['settings']['url_ok'],
+    'URL_NOK' => $payment_method['settings']['url_not_ok'],
+    'Firma' => $signature,
+    'Cifrado' => 'SHA1',
+    'Num_operacion' => $order->order_number,
+    'Importe' => $total,
+    'TipoMoneda' => $currency,
+    'Exponente' => 2,
+    'Pago_soportado' => 'SSL',
+    'Idioma' => $lang_op,
+  );
+
+  foreach ($data as $key => $value) {
+    $form[$key] = array(
+      '#type' => 'hidden',
+      '#value' => $value,
+    );
+  }
+
+  // TO-DO: SI TARJETA
+  if (FALSE) {
+    $data_card = array(
+      'Pago_elegido' => 'SSL',
+      'PAN' => '***TARJETA***',
+      'Caducidad' => '***CADUCIDAD***',
+      'CVV2' => '***CVC***',
+    );
+    foreach ($data_card as $key => $value) {
+      $form[$key] = array(
+        '#type' => 'hidden',
+        '#value' => $value,
+      );
+    }
+  }
+
+  $form['Comprar'] = array(
+    '#type' => 'submit',
+    '#value' => 'Comprar',
+  );
+
+  return $form;
+
+}
